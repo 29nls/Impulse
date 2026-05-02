@@ -3,17 +3,25 @@ from hashlib import md5
 from string import ascii_letters
 
 
-# Get salt numbers
-def getSaltByKey(key, message):
-    salt = ''
+def getSaltByKey(key: str, message: str) -> str:
+    """Generate salt from key hash matching message length.
+    
+    Args:
+        key: Encryption key
+        message: Message to match length
+        
+    Returns:
+        Salt string with same length as message
+    """
+    salt = []
     kHash = md5(key.encode()).hexdigest()
+    target_len = len(message)
 
-    while True:
+    while len(salt) < target_len:
         for char in kHash:
-            if len(salt) == len(message):
+            if len(salt) >= target_len:
                 break
-            if not char in ascii_letters:
-                salt += char
+            if char not in ascii_letters:
+                salt.append(char)
 
-        if len(salt) == len(message):
-            return salt
+    return "".join(salt)

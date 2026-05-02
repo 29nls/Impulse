@@ -4,74 +4,86 @@ import socket
 import ipaddress
 import requests
 from urllib.parse import urlparse
-from tools.EMAIL.emailTools import ReadSenderEmail
 from time import sleep
 from colorama import Fore
 
-""" Check if site is under CloudFlare protection """
 
-
-def __isCloudFlare(link):
+def __isCloudFlare(link: str) -> bool:
+    """Check if site is under CloudFlare protection.
+    
+    Args:
+        link: URL to check
+        
+    Returns:
+        True if protected by CloudFlare, False otherwise
+    """
     parsed_uri = urlparse(link)
-    domain = "{uri.netloc}".format(uri=parsed_uri)
+    domain = parsed_uri.netloc
     try:
         origin = socket.gethostbyname(domain)
-        iprange = requests.get("https://www.cloudflare.com/ips-v4").text
+        iprange = requests.get("https://www.cloudflare.com/ips-v4", timeout=10).text
         ipv4 = [row.rstrip() for row in iprange.splitlines()]
-        for i in range(len(ipv4)):
-            if ipaddress.ip_address(origin) in ipaddress.ip_network(ipv4[i]):
+        for network in ipv4:
+            if ipaddress.ip_address(origin) in ipaddress.ip_network(network):
                 print(
                     f"{Fore.RED}[!] {Fore.YELLOW}The site is protected by CloudFlare, attacks may not produce results.{Fore.RESET}"
                 )
                 sleep(1)
-    except socket.gaierror:
-        return False
+                return True
+    except (socket.gaierror, requests.RequestException):
+        pass
+    return False
 
 
-""" Return ip, port """
-
-
-def __GetAddressInfo(target):
+def __GetAddressInfo(target: str) -> tuple[str, int]:
+    """Parse IP:PORT format.
+    
+    Args:
+        target: String in format "ip:port"
+        
+    Returns:
+        Tuple of (ip, port)
+        
+    Raises:
+        SystemExit: If format is invalid
+    """
     try:
-        ip = target.split(":")[0]
-        port = int(target.split(":")[1])
-    except IndexError:
-        print(f"{Fore.RED}[!] {Fore.MAGENTA}You must enter ip and port{Fore.RESET}")
+        ip, port_str = target.rsplit(":", 1)
+        port = int(port_str)
+        if not 1 <= port <= 65535:
+            raise ValueError
+    except (ValueError, IndexError):
+        print(f"{Fore.RED}[!] {Fore.MAGENTA}You must enter valid ip:port (port 1-65535){Fore.RESET}")
         sys.exit(1)
-    else:
-        return ip, port
+    return ip, port
 
 
-""" Return url (for HTTP method) """
-
-
-def __GetURLInfo(target):
+def __GetURLInfo(target: str) -> str:
+    """Ensure URL has scheme.
+    
+    Args:
+        target: URL string
+        
+    Returns:
+        URL with http:// scheme if missing
+    """
     if not target.startswith("http"):
         target = f"http://{target}"
     return target
 
 
-""" Get target, subject, body """
-
-
-def __GetEmailMessage():
-    server, username = ReadSenderEmail()
-    subject = input(f"{Fore.BLUE}[?] {Fore.MAGENTA}Enter the Subject (leave blank for random value): ")
-    body = input(f"{Fore.BLUE}[?] {Fore.MAGENTA}Enter Your Message (leave blank for random value): ")
-    return [server, username, subject, body]
-
-""" Return target """
-
-
-def GetTargetAddress(target, method):
+def GetTargetAddress(target: str, method: str):
+    """Resolve target address based on attack method.
+    
+    Args:
+        target: Target string (IP:PORT, URL, or phone)
+        method: Attack method name
+        
+    Returns:
+        Resolved target appropriate for the method
+    """
     if method == "SMS":
-        if target.startswith("+"):
-            target = target[1:]
-        return target
-    elif method == "EMAIL":
-        email = __GetEmailMessage()
-        email.append(target)
-        return email
+        return target.lstrip("+")
     elif method in (
         "SYN",
         "UDP",
@@ -82,8 +94,12 @@ def GetTargetAddress(target, method):
         "SLOWLORIS",
     ) and target.startswith("http"):
         parsed_uri = urlparse(target)
-        domain = "{uri.netloc}".format(uri=parsed_uri)
-        origin = socket.gethostbyname(domain)
+        domain = parsed_uri.netloc
+        try:
+            origin = socket.gethostbyname(domain)
+        except socket.gaierror:
+            print(f"{Fore.RED}[!] {Fore.MAGENTA}Could not resolve {domain}{Fore.RESET}")
+            sys.exit(1)
         __isCloudFlare(domain)
         return origin, 80
     elif method in ("SYN", "UDP", "NTP", "POD", "MEMCACHED", "ICMP", "SLOWLORIS"):
@@ -96,13 +112,15 @@ def GetTargetAddress(target, method):
         return target
 
 
-""" Is connected to internet """
-
-
-def InternetConnectionCheck():
+def InternetConnectionCheck() -> None:
+    """Check if device is connected to the internet.
+    
+    Raises:
+        SystemExit: If no internet connection
+    """
     try:
         requests.get("https://google.com", timeout=4)
-    except:
+    except requests.RequestException:
         print(
             f"{Fore.RED}[!] {Fore.MAGENTA}Your device is not connected to the Internet{Fore.RESET}"
         )

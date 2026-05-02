@@ -2,41 +2,53 @@
 from random import choice
 
 
-# Add salt to data
-def protect(message, salt):
-    # Variables
-    eData = ''
-    salt = list(salt)
-    saltChars = []
-
-    # Add salt characters to list
+def protect(message: str, salt: str) -> str:
+    """Add salt to message.
+    
+    Args:
+        message: Original message
+        salt: Salt string
+        
+    Returns:
+        Salted message
+    """
+    salt_list = list(salt)
+    salt_chars = []
+    
+    # Collect unique characters from message
     for char in message:
-        if not char in saltChars:
-            saltChars.append(char)
-
+        if char not in salt_chars:
+            salt_chars.append(char)
+    
     # Add salt to message
-    for index, secretChar in enumerate(message):
-        for _ in range(int(salt[index])):
-            eData += choice(saltChars)
-        eData += secretChar
+    result = []
+    for index, secret_char in enumerate(message):
+        for _ in range(int(salt_list[index])):
+            result.append(choice(salt_chars))
+        result.append(secret_char)
+    
+    return "".join(result)
 
-    return eData
 
-
-# Remove salt from data
-def unprotect(message, salt):
-    # Variables
-    p = 0
-    dData = ''
-
-    # Remove salt characters from string
-    for secretSalt in salt:
-        message = message[int(secretSalt) + p:]
-        # If not data - stop
+def unprotect(message: str, salt: str) -> str:
+    """Remove salt from message.
+    
+    Args:
+        message: Salted message
+        salt: Salt string
+        
+    Returns:
+        Original message without salt
+    """
+    pos = 0
+    result = []
+    
+    for secret_salt in salt:
+        message = message[int(secret_salt) + pos:]
         if not message:
             break
-
-        dData += message[0]
-        p = 1
-
-    return dData
+        
+        result.append(message[0])
+        pos = 1
+    
+    return "".join(result)

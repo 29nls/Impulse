@@ -1,6 +1,4 @@
-requests
-scapy
-wget
-argparse
-colorama
-humanfriendly
+requests>=2.25.0
+scapy>=2.4.5
+colorama>=0.4.4
+humanfriendly>=9.1

