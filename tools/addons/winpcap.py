@@ -1,7 +1,7 @@
 # Import modules
 import os
 import sys
-import wget
+import requests
 from colorama import Fore
 
 if os.name == "nt":
@@ -13,7 +13,9 @@ if os.name == "nt":
         )
         if input(f"{Fore.MAGENTA} >>> {Fore.BLUE}").lower() in ("y", "yes", "1"):
             print(f"{Fore.YELLOW}[~] {Fore.CYAN}Downloading installer...{Fore.BLUE}\n")
-            winpcap_installer = wget.download(winpcap_url)
+            winpcap_installer = "WinPcap_4_1_3.exe"
+            with open(winpcap_installer, "wb") as f:
+                f.write(requests.get(winpcap_url).content)
             os.startfile(winpcap_installer)
             print(
                 f"\n\n{Fore.GREEN}[?] {Fore.YELLOW}Now please restart program{Fore.RESET}"

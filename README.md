@@ -32,6 +32,7 @@
   * Download Impulse
   * Open cmd or powershell in Impulse directory
   * Run this command: `pip install -r requirements.txt`
+  * **New:** For Windows L4 attacks (SYN/UDP/ICMP/POD/NTP/Memcached), install Npcap from https://npcap.com (required for scapy).
   * And this: `python impulse.py --help`
 
 * Linux:
